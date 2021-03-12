@@ -81,10 +81,13 @@ let restoreStickerPlacements = async () => {
     }
 }
 
-const startStickerShow = async () => {
+const startStickerShow = async (loops) => {
+    if (typeof(loops)==='undefined') loops = 0;
+
     if (stickershowEnabled) {
         clearTimeout(updateStickersTimeout)
     }
+
     const placed = await fetch("https://turntable.fm/api/sticker.place", {
         "headers": requestHeaders(),
         "referrer": "https://turntable.fm/profile/stickers",
@@ -94,18 +97,21 @@ const startStickerShow = async () => {
         "mode": "cors",
         "credentials": "include"
     });
+
     const response = await placed.json()
-    if (response[0] === false) {
+    if (response[0] === false || loops >= 2) {
         console.log(response)
         stopStickers()
         return
     }
+
     nyanCatPosition.left += dx
     if (nyanCatPosition.left > nyanEndX) {
-        nyanCatPosition.left = nyanStartX
+        nyanCatPosition.left = nyanStartX;
+        loops += 1;
     }
 
-    updateStickersTimeout = setTimeout(startStickerShow, 1000)
+    updateStickersTimeout = setTimeout(startStickerShow, 1000, loops)
 }
 
 const stopStickers = () => {
@@ -176,7 +182,6 @@ const runTurntableCode = async () => {
                         stopStickers()
                     }
                 }
-                // checkForStickerShow()
             }
         })
     }
@@ -222,6 +227,7 @@ const runTurntableCode = async () => {
         scheduleAutobop()
 
         // hook up stickershow
+        saveStickerPlacements()
         const stickershowInput = pluggedTTContainer.querySelector('.stickershowInput')
         stickershowInput.checked = stickershow
         stickershowInput.addEventListener('change', async (event) => {
@@ -241,7 +247,6 @@ const runTurntableCode = async () => {
 
         document.addEventListener('visibilitychange', () => {
             if (document.visible) {
-                // checkForStickerShow()
                 scheduleAutobop()
                 $(window).focus()
             }
@@ -258,7 +263,6 @@ const checkForStickerShow = () => {
     const { stickershow } = options
 
     if (coolIds.includes(turntable.user.id) && stickershow && currentSong && turntable.user.id === currentSong.djid) {
-        saveStickerPlacements()
         startStickerShow()
     }
 }
