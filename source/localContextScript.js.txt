@@ -2,6 +2,7 @@ const defaultOptions = {
     autobop: true,
     volume: 0.5,
     stickershow: false,
+    placements: [],
 }
 
 let options = { ... defaultOptions }
@@ -23,6 +24,7 @@ let nyanStartX = -180 + 68
 let nyanEndX = 500
 let frames = 10
 let dx = (nyanEndX - nyanStartX) / frames
+let stickershowPlacements = options.placements;
 let nyanCatPosition = {
     top: 56,
     left: nyanStartX,
@@ -59,6 +61,7 @@ let saveStickerPlacements = async () => {
         return;
     }
     options.placements = response[1].placements;
+    stickershowPlacements = [...options.placements];
     saveToLocalStorage();
 }
 
@@ -89,27 +92,37 @@ const startStickerShow = async (loops) => {
         clearTimeout(updateStickersTimeout)
     }
 
+    stickershowPlacements = stickershowPlacements.map(placement => {
+        if (placement.sticker_id == nyanSticker) {
+            let left = placement.left;
+            if (left > nyanEndX) {
+                left = nyanStartX;
+                loops += 1
+            }
+            return {
+                ...placement,
+                left: left+dx
+            };
+        } else {
+            return placement;
+        }
+    });
+
     const placed = await fetch("https://turntable.fm/api/sticker.place", {
         "headers": requestHeaders(),
         "referrer": "https://turntable.fm/profile/stickers",
         "referrerPolicy": "strict-origin-when-cross-origin",
-        "body": `{"placements":[{"transform":{"rotate":"0deg"},"top":56,"angle":0,"sticker_id":"${nyanSticker}","left":${nyanCatPosition.left}}],"userid":"${turntable.user.id}","userauth":"${turntable.user.auth}","client":"web","decache":1614999096614}`,
+        "body": `{"placements":${JSON.stringify(stickershowPlacements)},"userid":"${turntable.user.id}","userauth":"${turntable.user.auth}","client":"web","decache":1614999096614}`,
         "method": "POST",
         "mode": "cors",
         "credentials": "include"
     });
 
     const response = await placed.json()
-    if (response[0] === false || loops >= 2) {
+    if (response[0] === false || loops >= 3) {
         console.log(response)
         stopStickers()
         return
-    }
-
-    nyanCatPosition.left += dx
-    if (nyanCatPosition.left > nyanEndX) {
-        nyanCatPosition.left = nyanStartX;
-        loops += 1;
     }
 
     updateStickersTimeout = setTimeout(startStickerShow, 1000, loops)
@@ -344,7 +357,7 @@ const checkForStickerShow = () => {
 
 const scheduleAutobop = () => {
     log('schedule ab')
-    const autobopTimer = Math.random() * 10000 + 10000
+    const autobopTimer = Math.random() * 15000 + 15000
     setTimeout(autobopVote, autobopTimer)
 }
 
